@@ -1,12 +1,12 @@
 package com.venice.lockdown
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
@@ -14,13 +14,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.text.InputType
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
-import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.Toast
 
 class MainActivity : Activity() {
@@ -28,9 +25,10 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private var pinned = false
     private var suspendRefocusUntil = 0L
+    private var autoLockPosted = false
 
     private val unlockReceiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context?, i: Intent?) = showPinDialog()
+        override fun onReceive(c: Context?, i: Intent?) = unlock()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +57,7 @@ class MainActivity : Activity() {
         refreshState()
 
         findViewById<View>(R.id.btnOverlay).setOnClickListener {
-            suspendRefocusUntil = System.currentTimeMillis() + 8000
+            suspendRefocusUntil = System.currentTimeMillis() + 9000
             startActivity(
                 Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -69,7 +67,7 @@ class MainActivity : Activity() {
         }
 
         findViewById<View>(R.id.btnHome).setOnClickListener {
-            suspendRefocusUntil = System.currentTimeMillis() + 8000
+            suspendRefocusUntil = System.currentTimeMillis() + 9000
             try {
                 startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
             } catch (e: Exception) {
@@ -78,18 +76,6 @@ class MainActivity : Activity() {
         }
 
         findViewById<View>(R.id.btnLock).setOnClickListener { lockNow() }
-
-        findViewById<View>(R.id.btnSettings).setOnClickListener {
-            suspendRefocusUntil = System.currentTimeMillis() + 10000
-            startActivity(Intent(Settings.ACTION_SETTINGS))
-        }
-
-        findViewById<View>(R.id.btnLauncher).setOnClickListener { openOtherLauncher() }
-
-        findViewById<View>(R.id.btnRelock).setOnClickListener {
-            findViewById<View>(R.id.unlockPanel).visibility = View.GONE
-            lockNow()
-        }
 
         val f = IntentFilter(Const.ACTION_UNLOCK_REQUEST)
         if (Build.VERSION.SDK_INT >= 33)
@@ -102,10 +88,19 @@ class MainActivity : Activity() {
         super.onResume()
         hideSystemUi()
         refreshState()
+
+        if (!autoLockPosted && Settings.canDrawOverlays(this)) {
+            autoLockPosted = true
+            handler.postDelayed({
+                autoLockPosted = false
+                if (!isFinishing) lockNow()
+            }, 1800)
+        }
     }
 
     override fun onDestroy() {
         try { unregisterReceiver(unlockReceiver) } catch (_: Exception) {}
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -135,15 +130,29 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun setIconVisible(visible: Boolean) {
+        try {
+            packageManager.setComponentEnabledSetting(
+                ComponentName(this, "$packageName.Launcher"),
+                if (visible) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     private fun lockNow() {
         if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Overlay permission ඕන", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Allow display over other apps", Toast.LENGTH_SHORT).show()
             return
         }
+
         findViewById<View>(R.id.setupPanel).visibility = View.GONE
         findViewById<View>(R.id.unlockPanel).visibility = View.GONE
 
         startForegroundService(Intent(this, OverlayService::class.java))
+        setIconVisible(false)
         hideSystemUi()
 
         if (!pinned) {
@@ -155,32 +164,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showPinDialog() {
-        val input = EditText(this).apply {
-            inputType =
-                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "PIN"
-            setPadding(60, 40, 60, 40)
-        }
-        val box = FrameLayout(this).apply { addView(input) }
-
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
-            .setTitle("Unlock")
-            .setView(box)
-            .setPositiveButton("OK") { _, _ ->
-                if (input.text.toString() == Const.PIN) unlock()
-                else Toast.makeText(this, "PIN වැරදියි", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
     private fun unlock() {
         pinned = false
         try { stopLockTask() } catch (_: Exception) {}
         stopService(Intent(this, OverlayService::class.java))
-        findViewById<View>(R.id.setupPanel).visibility = View.GONE
-        findViewById<View>(R.id.unlockPanel).visibility = View.VISIBLE
+        setIconVisible(true)
+
+        findViewById<View>(R.id.unlockPanel).visibility = View.GONE
+        findViewById<View>(R.id.setupPanel).visibility = View.VISIBLE
+
+        Toast.makeText(this, "Unlocked", Toast.LENGTH_SHORT).show()
+        handler.postDelayed({ openOtherLauncher() }, 500)
     }
 
     private fun openOtherLauncher() {
@@ -205,7 +199,6 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        // block back button
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
